@@ -1,3 +1,3 @@
-import { S3Bucket } from "./S3";
+import S3 from "./S3";
 
-export { S3Bucket }
+export { S3 }

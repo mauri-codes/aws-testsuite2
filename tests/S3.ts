@@ -77,3 +77,5 @@ async function accessBlockIsPublic(s3Bucket: S3Bucket) {
 // AccessBlockIsPublic(x);
 
 export { bucketPolicyIsPublic, accessBlockIsPublic }
+export default { bucketPolicyIsPublic, accessBlockIsPublic }
+

@@ -9,3 +9,4 @@ class S3Bucket extends AWSResource {
 }
 
 export { S3Bucket }
+export default { S3Bucket }
