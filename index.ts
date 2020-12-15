@@ -1,25 +1,73 @@
-import AWS, { S3 } from "aws-sdk";
+import AWS, { S3 } from "aws-sdk"
 
 export interface Environment {
    region?: string
+   profile?: string
 }
-type AWSService = "S3"
-type AWSClient = S3
+export type AWSService = "S3"
+export type AWSClient = S3
 
+const clients = {
+   "S3": new S3()
+}
+interface EnvironmentConfig {
+   credentials?: {
+      secretAccessKey: string
+      accessKeyId: string
+   },
+   region?: string
+}
 
 class AWSResource {
    env: Environment | undefined
    client: AWSClient
+   service: AWSService
    constructor(service: AWSService, env?: Environment) {
-      this.env = env
-      if (env && env.region) {
-         this.client = new AWS[service]({region: env?.region})
-      } else {
-         this.client = new AWS[service]()
+      this.service = service
+      this.client = clients[this.service]
+      const config = this.setupEnvironmentConfig(env)
+      this.setUpClient(config)
+   }
+   setUpClient(config: EnvironmentConfig) {
+      if (config.credentials || config.region) {
+         this.client = new AWS[this.service](config)
       }
+   }
+   setupEnvironmentConfig (env?: Environment) {
+      this.env = env
+      let config: EnvironmentConfig = {}
+      if (env?.region) {
+         config.region = env.region
+      }
+      if (env?.profile) {
+         const awsCredentials = new AWS.SharedIniFileCredentials({profile: env.profile})
+         config.credentials = {
+            accessKeyId: awsCredentials.accessKeyId,
+            secretAccessKey: awsCredentials.secretAccessKey
+         }
+      }
+      return config
    }
 }
 
-let l = new AWSResource("S3")
+class AWSResourceGroup {
+   env: Environment | undefined
+   resources: AWSResource[] = []
+   constructor(resources: AWSResource[], env?: Environment) {
+      this.env = env
+      this.resources = resources
+      if (env?.profile || env?.region) {
+         this.applyEnvironment()
+      }
+   }
+   applyEnvironment() {
+      this.resources.forEach(resource => {
+         if (resource.env == null) {
+            let config = resource.setupEnvironmentConfig(this.env)
+            resource.setUpClient(config)
+         }
+      })
+   }
+}
 
-export { AWSResource }
+export { AWSResource, AWSResourceGroup }

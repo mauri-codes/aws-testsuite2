@@ -1,4 +1,4 @@
-import { AWSResource, Environment } from "../index";
+import { AWSResource, Environment } from "../index"
 
 class S3Bucket extends AWSResource {
    bucketName: string
