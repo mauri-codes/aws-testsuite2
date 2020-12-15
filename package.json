@@ -6,7 +6,7 @@
   "types": "lib/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "tsc": "tsc -p ."
+    "compile": "rm -rf lib && tsc -p . && cp package.json lib/package.json && cp package-lock.json lib/package-lock.json"
   },
   "repository": {
     "type": "git",
