@@ -56,7 +56,7 @@ class BucketPolicyIsPublic implements Test {
          Bucket: this.s3Bucket.bucketName
       }
       try {
-         let bucketPolicyObject = await this.s3Bucket.client.getBucketPolicyStatus(params).promise()
+         let bucketPolicyObject = await this.s3Bucket.s3Client.getBucketPolicyStatus(params).promise()
          if (bucketPolicyObject.PolicyStatus?.IsPublic) {
             testResult.success = true
          }
@@ -89,7 +89,7 @@ class BucketWebsiteConfiguration {
          Bucket: this.s3Bucket.bucketName
       }
       try {
-         let bucketWebsiteConfig = await this.s3Bucket.client.getBucketWebsite(params).promise()
+         let bucketWebsiteConfig = await this.s3Bucket.s3Client.getBucketWebsite(params).promise()
          let { ErrorDocument, IndexDocument} = bucketWebsiteConfig
          if (ErrorDocument?.Key && IndexDocument?.Suffix) {
             testResult.success = true
@@ -127,7 +127,7 @@ class AccessBlockIsPublic implements Test {
          Bucket: this.s3Bucket.bucketName
       }
       try {
-         let accessBlockObject = await this.s3Bucket.client.getPublicAccessBlock(params).promise()
+         let accessBlockObject = await this.s3Bucket.s3Client.getPublicAccessBlock(params).promise()
          if (accessBlockObject.PublicAccessBlockConfiguration) {
             let {
                BlockPublicAcls,

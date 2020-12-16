@@ -1,4 +1,4 @@
-import AWS, { S3 } from "aws-sdk"
+import AWS, { S3, CloudFront } from "aws-sdk"
 
 export interface Environment {
    region?: string
@@ -12,11 +12,14 @@ export interface TestResult {
    error?: string
 }
 
-export type AWSService = "S3"
-export type AWSClient = S3
+export type AWSService = "S3" | "CloudFront"
+export type AWSClient =  S3 | CloudFront
 
-const clients = {
-   "S3": new S3()
+const clients: {
+   [key in AWSService]: AWSClient
+} = {
+   "S3": new S3(),
+   "CloudFront": new CloudFront()
 }
 interface EnvironmentConfig {
    credentials?: {
@@ -28,7 +31,7 @@ interface EnvironmentConfig {
 
 class AWSResource {
    env: Environment | undefined
-   client: AWSClient
+   client: any
    service: AWSService
    constructor(service: AWSService, env?: Environment) {
       this.service = service
