@@ -2,7 +2,43 @@ import { TestResult, Test, TestGroup } from "../index"
 import { S3Bucket } from "../resources/S3"
 import { S3 } from "aws-sdk"
 import { AWSResourceGroup } from "../index"
+import axios from "axios";
 
+(new S3()).config
+
+class BucketWebsiteEndpointOperational implements Test {
+   s3Bucket: S3Bucket
+   actions = []
+   id: string = BucketWebsiteEndpointOperational.name
+   bucketWebsiteUrl: string
+   constructor(s3Bucket: S3Bucket) {
+      this.s3Bucket = s3Bucket
+      let region = s3Bucket.client.config.region
+      if (s3Bucket.env?.region) {
+         region = s3Bucket.env?.region
+      }
+      this.bucketWebsiteUrl = `http://${s3Bucket.bucketName}.s3-website.${region}.amazonaws.com`
+   }
+   async run() {
+      let testResult: TestResult = {
+         id: this.id,
+         success: false
+      }
+      try {
+         await axios.get(this.bucketWebsiteUrl)
+         testResult.success = true
+      } catch (err) {
+         if (err.response.status == 403) {
+            testResult.message = "Website not availble, Forbidden 403"
+         }
+         else {
+            testResult.message = "Error"
+         }
+         testResult.error = err.response.status + ""
+      }
+      return testResult
+   }
+}
 
 class BucketPolicyIsPublic implements Test {
    s3Bucket: S3Bucket
@@ -25,7 +61,7 @@ class BucketPolicyIsPublic implements Test {
             testResult.success = true
          }
       } catch (err) {
-         if (err.code = 'NoSuchBucketPolicy') {
+         if (err.code == 'NoSuchBucketPolicy') {
             testResult.message = "You need to add a Bucket Policy"
          }
          else {
@@ -125,12 +161,13 @@ class AccessBlockIsPublic implements Test {
 
 // new AWSResourceGroup([
 //    myBucket
-// ], {profile: "arthur"})
+// ], {profile: "default", region: "us-east-2"})
 
 // let testGroup = new TestGroup([
 //    new BucketPolicyIsPublic(myBucket),
 //    new AccessBlockIsPublic(myBucket),
-//    new BucketWebsiteConfiguration(myBucket)
+//    new BucketWebsiteConfiguration(myBucket),
+//    new BucketWebsiteEndpointOperational(myBucket)
 // ])
 
 
@@ -144,5 +181,5 @@ class AccessBlockIsPublic implements Test {
 
 // y()
 
-export default { BucketPolicyIsPublic, AccessBlockIsPublic, BucketWebsiteConfiguration }
+export default { BucketPolicyIsPublic, AccessBlockIsPublic, BucketWebsiteConfiguration, BucketWebsiteEndpointOperational }
 
