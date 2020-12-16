@@ -4,6 +4,14 @@ export interface Environment {
    region?: string
    profile?: string
 }
+
+export interface TestResult {
+   success: boolean
+   id?: string
+   message?: string
+   error?: string
+}
+
 export type AWSService = "S3"
 export type AWSClient = S3
 
@@ -70,4 +78,26 @@ class AWSResourceGroup {
    }
 }
 
-export { AWSResource, AWSResourceGroup }
+class Test {
+   async run():Promise<TestResult> {
+      return {
+         success: true
+      }
+   }
+}
+
+class TestGroup {
+   tests: Test[] = []
+   constructor(tests: Test[]) {
+      this.tests = tests
+   }
+   async run() {
+      const testPromises = this.tests.map(test => {
+         return test.run()
+      })
+      let result = await Promise.all(testPromises)
+      return result
+   }
+}
+
+export { AWSResource, AWSResourceGroup, Test, TestGroup }
