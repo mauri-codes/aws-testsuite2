@@ -1,10 +1,7 @@
-import { TestResult, Test, TestGroup } from "../index"
+import { TestResult, Test } from "../index"
 import { S3Bucket } from "../resources/S3"
 import { S3 } from "aws-sdk"
-import { AWSResourceGroup } from "../index"
 import axios from "axios";
-
-(new S3()).config
 
 class BucketWebsiteEndpointOperational implements Test {
    s3Bucket: S3Bucket
@@ -13,11 +10,11 @@ class BucketWebsiteEndpointOperational implements Test {
    bucketWebsiteUrl: string
    constructor(s3Bucket: S3Bucket) {
       this.s3Bucket = s3Bucket
-      let region = s3Bucket.client.config.region
+      let region = s3Bucket.s3Client.config.region
       if (s3Bucket.env?.region) {
          region = s3Bucket.env?.region
       }
-      this.bucketWebsiteUrl = `http://${s3Bucket.bucketName}.s3-website.${region}.amazonaws.com`
+      this.bucketWebsiteUrl = s3Bucket.getWebsiteUrl()
    }
    async run() {
       let testResult: TestResult = {
@@ -156,30 +153,5 @@ class AccessBlockIsPublic implements Test {
    }
 }
 
-// let myBucket = new S3Bucket('mau-website')
-// let myBucket = new S3Bucket('aws-journey.net')
-
-// new AWSResourceGroup([
-//    myBucket
-// ], {profile: "default", region: "us-east-2"})
-
-// let testGroup = new TestGroup([
-//    new BucketPolicyIsPublic(myBucket),
-//    new AccessBlockIsPublic(myBucket),
-//    new BucketWebsiteConfiguration(myBucket),
-//    new BucketWebsiteEndpointOperational(myBucket)
-// ])
-
-
-
-// let y = async () => {
-//    let a = await testGroup.run()
-//    console.log("---1----")
-//    console.log(a)
-//    return true
-// }
-
-// y()
-
-export default { BucketPolicyIsPublic, AccessBlockIsPublic, BucketWebsiteConfiguration, BucketWebsiteEndpointOperational }
+export { BucketPolicyIsPublic, AccessBlockIsPublic, BucketWebsiteConfiguration, BucketWebsiteEndpointOperational }
 

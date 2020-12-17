@@ -91,16 +91,37 @@ class Test {
 
 class TestGroup {
    tests: Test[] = []
-   constructor(tests: Test[]) {
+   id: string
+   constructor(id: string, tests: Test[]) {
+      this.id = id
       this.tests = tests
    }
    async run() {
-      const testPromises = this.tests.map(test => {
-         return test.run()
-      })
+      const testPromises = this.tests.map(test => test.run())
       let result = await Promise.all(testPromises)
-      return result
+      return {
+         id: this.id,
+         success: result.every(test => test.success),
+         tests: result
+      }
    }
 }
 
-export { AWSResource, AWSResourceGroup, Test, TestGroup }
+class TestSuite {
+   testGroups: TestGroup[] = []
+   constructor(testGroups?: TestGroup[]) {
+      if (testGroups) {
+         this.testGroups = testGroups
+      }
+   }
+   async run() {
+      const testGroupPromises = this.testGroups.map(testGroup =>  testGroup.run())
+      let result = await Promise.all(testGroupPromises)
+      return {
+         success: result.every(testGroup => testGroup.success),
+         testGroups: result
+      }
+   }
+}
+
+export { AWSResource, AWSResourceGroup, Test, TestGroup, TestSuite }
