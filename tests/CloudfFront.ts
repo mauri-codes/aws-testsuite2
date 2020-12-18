@@ -101,36 +101,3 @@ class DistributionHasS3WebsiteOrigin implements Test {
 }
 
 export { DistributionHasHTTPSDefaultConfiguration, DistributionHasS3WebsiteOrigin }
-// let cf = new CloudFrontDistribution({tag:{Key: "journey", Value: "s3-website"}})
-// let myBucket = new S3Bucket('my-example-bucket-1789')
-// // let cf = new CloudFrontDistribution({id: 'E29N9RVZVGRC8Y'})
-
-// new AWSResourceGroup([
-//    cf, myBucket
-// ])
-// let testGroup2 = new TestGroup("s3 Tests", [
-//    new BucketPolicyIsPublic(myBucket),
-//    new AccessBlockIsPublic(myBucket),
-//    new BucketWebsiteConfiguration(myBucket),
-//    new BucketWebsiteEndpointOperational(myBucket)
-// ])
-
-// let testGroup1 = new TestGroup("cloudFront Tests", [
-//    new DistributionHasHTTPSDefaultConfiguration(cf),
-//    new DistributionHasS3WebsiteOrigin(cf, myBucket)
-// ])
-
-// let testsuite = new TestSuite([
-//    testGroup2,
-//    testGroup1
-// ])
-
-// let y = async () => {
-//    let a = await testsuite.run()
-//    console.log("---1----")
-//    console.log(a)
-//    return true
-// }
-
-// y()
-

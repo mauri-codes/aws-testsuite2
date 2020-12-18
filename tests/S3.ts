@@ -154,4 +154,3 @@ class AccessBlockIsPublic implements Test {
 }
 
 export { BucketPolicyIsPublic, AccessBlockIsPublic, BucketWebsiteConfiguration, BucketWebsiteEndpointOperational }
-
