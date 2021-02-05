@@ -4,16 +4,17 @@ import { DistributionHasHTTPSDefaultConfiguration, DistributionHasS3WebsiteOrigi
 import { AccessBlockIsPublic, BucketPolicyIsPublic, BucketWebsiteConfiguration, BucketWebsiteEndpointOperational } from "../tests/S3";
 import { AWSResourceGroup, TestGroup, TestSuite } from "../index";
 import { CloudFront } from "aws-sdk";
+import { Environment } from "../index";
 
 class S3StaticWebsite extends TestSuite {
     s3BucketName: string
     cloudFrontTag: CloudFront.Tag
-    constructor(s3BucketName: string, cloudFrontTag: CloudFront.Tag) {
+    constructor(s3BucketName: string, cloudFrontTag: CloudFront.Tag, env?: Environment) {
         super()
         this.s3BucketName = s3BucketName
         this.cloudFrontTag = cloudFrontTag
-        const bucket = new S3Bucket(this.s3BucketName)
-        const cfDistribution = new CloudFrontDistribution({tag: this.cloudFrontTag})
+        const bucket = new S3Bucket(this.s3BucketName, env)
+        const cfDistribution = new CloudFrontDistribution({tag: this.cloudFrontTag}, env)
         this.testGroups = [
             this.s3TestGroup(bucket),
             this.cloudFrontTestGroup(cfDistribution, bucket)

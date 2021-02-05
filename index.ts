@@ -3,6 +3,10 @@ import AWS, { S3, CloudFront } from "aws-sdk"
 export interface Environment {
    region?: string
    profile?: string
+   credentials?: {
+      id: string,
+      secret: string
+   }
 }
 
 export interface TestResult {
@@ -16,10 +20,10 @@ export type AWSService = "S3" | "CloudFront"
 export type AWSClient =  S3 | CloudFront
 
 const clients: {
-   [key in AWSService]: AWSClient
+   [key in AWSService]: () => AWSClient
 } = {
-   "S3": new S3(),
-   "CloudFront": new CloudFront()
+   "S3": () => new S3(),
+   "CloudFront": () => new CloudFront()
 }
 interface EnvironmentConfig {
    credentials?: {
@@ -35,7 +39,7 @@ class AWSResource {
    service: AWSService
    constructor(service: AWSService, env?: Environment) {
       this.service = service
-      this.client = clients[this.service]
+      this.client = clients[this.service]()
       const config = this.setupEnvironmentConfig(env)
       this.setUpClient(config)
    }
@@ -55,6 +59,11 @@ class AWSResource {
          config.credentials = {
             accessKeyId: awsCredentials.accessKeyId,
             secretAccessKey: awsCredentials.secretAccessKey
+         }
+      } else if (env?.credentials) {
+         config.credentials = {
+            accessKeyId: env.credentials?.id,
+            secretAccessKey: env.credentials.secret
          }
       }
       return config

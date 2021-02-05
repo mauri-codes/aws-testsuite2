@@ -25,13 +25,16 @@ class BucketWebsiteEndpointOperational implements Test {
          await axios.get(this.bucketWebsiteUrl)
          testResult.success = true
       } catch (err) {
-         if (err.response.status == 403) {
+         if (err.response == null) {
+            testResult.message = `unreachable endpoint: ${this.bucketWebsiteUrl}`
+         }
+         else if (err.response && err.response.status == 403) {
             testResult.message = "Website not availble, Forbidden 403"
          }
          else {
             testResult.message = "Error"
          }
-         testResult.error = err.response.status + ""
+         testResult.error = err.response? err.response.status + "": "unknown"
       }
       return testResult
    }

@@ -14,7 +14,7 @@ class S3Bucket extends AWSResource {
       if (this.env?.region) {
          region = this.env?.region
       }
-      return `http://${this.bucketName}.s3-website-${region}.amazonaws.com`
+      return `http://${this.bucketName}.s3-website.${region}.amazonaws.com`
    }
 }
 
