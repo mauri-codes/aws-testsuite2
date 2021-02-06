@@ -9,9 +9,9 @@ import { Environment } from "../index";
 class S3StaticWebsite extends TestSuite {
     s3BucketName: string
     cloudFrontTag: CloudFront.Tag
-    constructor(s3BucketName: string, cloudFrontTag: CloudFront.Tag, env?: Environment) {
+    constructor(parameters: {s3BucketName: string}, cloudFrontTag: CloudFront.Tag, env?: Environment) {
         super()
-        this.s3BucketName = s3BucketName
+        this.s3BucketName = parameters.s3BucketName
         this.cloudFrontTag = cloudFrontTag
         const bucket = new S3Bucket(this.s3BucketName, env)
         const cfDistribution = new CloudFrontDistribution({tag: this.cloudFrontTag}, env)
