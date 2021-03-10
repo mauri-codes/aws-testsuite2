@@ -49,7 +49,7 @@ class CloudFrontDistribution extends AWSResource  {
          result.success = true
       }
       catch(err) {
-         result.error = err
+         result.error = err.code
       }
       return result
    }
@@ -83,7 +83,7 @@ class CloudFrontDistribution extends AWSResource  {
          this.distributionData = distributionsInfo.Distribution
          result.success = true
       } catch (err) {
-         result.error = err
+         result.error = err.code
       }
       return result
    }
