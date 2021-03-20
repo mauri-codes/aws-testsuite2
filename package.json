@@ -7,7 +7,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "publish": "cd lib && npm publish",
-    "compile": "rm -rf lib && tsc -p . && cp package.json lib/package.json && cp package-lock.json lib/package-lock.json"
+    "compile": "rm -rf lib && tsc -p . && cp package.json lib/package.json && cp -r node_modules lib/node_modules"
   },
   "repository": {
     "type": "git",
