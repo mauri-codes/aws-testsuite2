@@ -94,6 +94,10 @@ class AWSResourceGroup {
    }
 }
 
+const SuccessFulTest: TestResult = {
+   success: true
+}
+
 class Test {
    async run():Promise<TestResult> {
       return {
@@ -137,4 +141,4 @@ class TestSuite {
    }
 }
 
-export { AWSResource, AWSResourceGroup, Test, TestGroup, TestSuite }
+export { AWSResource, AWSResourceGroup, Test, TestGroup, TestSuite, SuccessFulTest }

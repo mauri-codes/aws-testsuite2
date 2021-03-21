@@ -1,5 +1,6 @@
 import { AWSResource, Environment } from "../index"
 import { IAM, Request } from "aws-sdk";
+import { CatchError, CatchTestError } from "../util/errors";
 
 class IAMResource extends AWSResource {
    iamClient: IAM
@@ -11,27 +12,37 @@ class IAMResource extends AWSResource {
 
 class IAMGroup extends IAMResource {
    groupName: string
-   getGroupData: IAM.GetGroupResponse | undefined
+   groupData: IAM.User[] | undefined
+   groupManagedPolicies: IAM.Policy[] | undefined
    constructor(groupName: string, env?: Environment) {
       super(env)
       this.groupName = groupName
    }
-   async getGroup(): Promise<IAM.GetGroupResponse> {
-      if (this.getGroupData != null) {
-         return this.getGroupData
+   async getGroup(): Promise<IAM.User[]> {
+      if (this.groupData == undefined) {
+         this.groupData = (await this.iamClient.getGroup({
+            GroupName: this.groupName
+         }).promise()).Users
       }
-      this.getGroupData = await this.iamClient.getGroup({
-         GroupName: this.groupName
-      }).promise()
-      return this.getGroupData
+      return this.groupData
+   }
+   async getGroupManagedPolicies (): Promise<IAM.Policy[]> {
+      if (this.groupManagedPolicies == undefined) {
+         this.groupManagedPolicies = (await this.iamClient.listAttachedGroupPolicies({
+            GroupName: this.groupName
+         }).promise()).AttachedPolicies
+      }
+      return this.groupManagedPolicies || []
    }
 }
 
 class IAMPolicy extends IAMResource {
    policyName: string
+   policyArn: string
    constructor(policyName: string, env?: Environment) {
       super(env)
       this.policyName = policyName
+      this.policyArn = ``
    }
 }
 

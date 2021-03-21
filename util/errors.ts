@@ -16,26 +16,21 @@ function CatchTestError(errorHandler?: (error: Either<Error, TestError>) => Test
                let response: TestResult = {
                   success: false,
                   message: error.message,
-                  error: error.message
-               }
-               if (error.code) {
-                  response.error = error.code
+                  error: error.code || "500"
                }
                return response
          }
       }
-
       return descriptor
    }
 }
 
 interface ErrorDescriptor {
-   error: string
    message: string
    code: string
 }
 
-function CatchError(errorPool: ErrorDescriptor[] = []) {
+function CatchError(errorPool?: ErrorDescriptor[]) {
    return function(target: any, key: string, descriptor: PropertyDescriptor) {
       const originalMethod = descriptor.value
 
@@ -43,13 +38,10 @@ function CatchError(errorPool: ErrorDescriptor[] = []) {
          try {
                return await originalMethod.apply(this, args)
          } catch (error) {
-               console.log(JSON.stringify(error))
-               let errorFound = errorPool.find(errorItem => errorItem.error == error.message)
-               if (errorFound) {
-                  const {code, message} = errorFound
-                  throw new TestError(code, message)
-               }
-               throw new Error(error.message)
+            console.log("---");
+            console.log(error);
+
+            throw error
          }
       }
       return descriptor
@@ -57,9 +49,14 @@ function CatchError(errorPool: ErrorDescriptor[] = []) {
 }
 
 class TestError extends Error {
+   info: ErrorDescriptor
    code: string
-   constructor(code: string, message: string) {
-      super(message)
-      this.code = code
+   constructor(error: ErrorDescriptor) {
+      super(error.message)
+      this.info = error
+      this.code = error.code
    }
 }
+
+
+export { TestError, ErrorDescriptor, CatchError, CatchTestError }
