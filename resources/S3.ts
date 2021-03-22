@@ -11,8 +11,8 @@ class S3Bucket extends AWSResource {
    }
    getWebsiteUrl() {
       let region = this.s3Client.config.region
-      if (this.env?.region) {
-         region = this.env?.region
+      if (this.environment?.region) {
+         region = this.environment?.region
       }
       return `http://${this.bucketName}.s3-website.${region}.amazonaws.com`
    }

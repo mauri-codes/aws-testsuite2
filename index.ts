@@ -1,7 +1,8 @@
 import AWS, {
    S3,
    CloudFront,
-   IAM
+   IAM,
+   STS
 } from "aws-sdk"
 
 export interface Environment {
@@ -11,6 +12,11 @@ export interface Environment {
       id: string,
       secret: string
    }
+}
+
+export interface AWSKeys {
+   id: string
+   secret: string
 }
 
 export interface TestResult {
@@ -37,14 +43,56 @@ interface EnvironmentConfig {
    region?: string
 }
 
+class AWSEnvironment {
+   region: string | undefined
+   profile: string | undefined
+   credentials: AWSKeys | undefined
+   accountId: string| undefined
+   sts: STS
+   constructor(env?: Environment) {
+      this.region = env?.region
+      this.profile = env?.profile
+      this.credentials = env?.credentials
+      this.sts = new AWS.STS(setupEnvironmentConfig(env || {}))
+   }
+   async getAccountNumber () {
+      if (this.accountId === undefined) {
+         let accountInfo: STS.GetCallerIdentityResponse = await this.sts.getCallerIdentity().promise()
+         this.accountId = accountInfo.Account
+      }
+      return this.accountId
+   }
+}
+
+function setupEnvironmentConfig (environment: Environment) {
+   let config: EnvironmentConfig = {}
+   if (environment?.region) {
+      config.region = environment.region
+   }
+   if (environment?.profile) {
+      const awsCredentials = new AWS.SharedIniFileCredentials({profile: environment.profile})
+      config.credentials = {
+         accessKeyId: awsCredentials.accessKeyId,
+         secretAccessKey: awsCredentials.secretAccessKey
+      }
+   } else if (environment?.credentials) {
+      config.credentials = {
+         accessKeyId: environment.credentials?.id,
+         secretAccessKey: environment.credentials.secret
+      }
+   }
+   return config
+}
+
 class AWSResource {
-   env: Environment | undefined
+   environment: AWSEnvironment | undefined
    client: any
    service: AWSService
    constructor(service: AWSService, env?: Environment) {
+      this.environment = new AWSEnvironment(env)
       this.service = service
       this.client = clients[this.service]()
-      const config = this.setupEnvironmentConfig(env)
+      const config = this.setupEnvironmentConfig(this.environment)
       this.setUpClient(config)
    }
    setUpClient(config: EnvironmentConfig) {
@@ -52,22 +100,21 @@ class AWSResource {
          this.client = new AWS[this.service](config)
       }
    }
-   setupEnvironmentConfig (env?: Environment) {
-      this.env = env
+   setupEnvironmentConfig (environment: AWSEnvironment) {
       let config: EnvironmentConfig = {}
-      if (env?.region) {
-         config.region = env.region
+      if (environment?.region) {
+         config.region = environment.region
       }
-      if (env?.profile) {
-         const awsCredentials = new AWS.SharedIniFileCredentials({profile: env.profile})
+      if (environment?.profile) {
+         const awsCredentials = new AWS.SharedIniFileCredentials({profile: environment.profile})
          config.credentials = {
             accessKeyId: awsCredentials.accessKeyId,
             secretAccessKey: awsCredentials.secretAccessKey
          }
-      } else if (env?.credentials) {
+      } else if (environment?.credentials) {
          config.credentials = {
-            accessKeyId: env.credentials?.id,
-            secretAccessKey: env.credentials.secret
+            accessKeyId: environment.credentials?.id,
+            secretAccessKey: environment.credentials.secret
          }
       }
       return config
@@ -75,19 +122,19 @@ class AWSResource {
 }
 
 class AWSResourceGroup {
-   env: Environment | undefined
+   env: AWSEnvironment | undefined
    resources: AWSResource[] = []
-   constructor(resources: AWSResource[], env?: Environment) {
-      this.env = env
+   constructor(resources: AWSResource[], env?: AWSEnvironment) {
+      this.env = new AWSEnvironment(env)
       this.resources = resources
       if (env?.profile || env?.region) {
-         this.applyEnvironment()
+         this.applyEnvironment(env)
       }
    }
-   applyEnvironment() {
+   applyEnvironment(environment: AWSEnvironment) {
       this.resources.forEach(resource => {
-         if (resource.env == null) {
-            let config = resource.setupEnvironmentConfig(this.env)
+         if (resource.environment == null) {
+            let config = resource.setupEnvironmentConfig(environment)
             resource.setUpClient(config)
          }
       })
@@ -141,4 +188,4 @@ class TestSuite {
    }
 }
 
-export { AWSResource, AWSResourceGroup, Test, TestGroup, TestSuite, SuccessFulTest }
+export { AWSResource, AWSResourceGroup, Test, TestGroup, TestSuite, SuccessFulTest, AWSEnvironment }

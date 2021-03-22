@@ -9,7 +9,6 @@ function CatchTestError(errorHandler?: (error: Either<Error, TestError>) => Test
          try {
                return await originalMethod.apply(this, args)
          } catch (error) {
-               console.log(JSON.stringify(error))
                if(errorHandler) {
                   return errorHandler(error)
                }
@@ -38,9 +37,6 @@ function CatchError(errorPool?: ErrorDescriptor[]) {
          try {
                return await originalMethod.apply(this, args)
          } catch (error) {
-            console.log("---");
-            console.log(error);
-
             throw error
          }
       }

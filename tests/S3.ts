@@ -11,8 +11,8 @@ class BucketWebsiteEndpointOperational implements Test {
    constructor(s3Bucket: S3Bucket) {
       this.s3Bucket = s3Bucket
       let region = s3Bucket.s3Client.config.region
-      if (s3Bucket.env?.region) {
-         region = s3Bucket.env?.region
+      if (s3Bucket.environment?.region) {
+         region = s3Bucket.environment?.region
       }
       this.bucketWebsiteUrl = s3Bucket.getWebsiteUrl()
    }
