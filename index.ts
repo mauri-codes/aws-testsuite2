@@ -141,9 +141,12 @@ class AWSResourceGroup {
    }
 }
 
-const SuccessFulTest: TestResult = {
-   success: true
-}
+const SuccessFulTest: (id: string) => TestResult = 
+   (id) => ({
+      id,
+      success: true
+   }
+)
 
 class Test {
    async run():Promise<TestResult> {

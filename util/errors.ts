@@ -1,7 +1,7 @@
 import { TestResult } from "../";
 import { Either } from "./";
 
-function CatchTestError(errorHandler?: (error: Either<Error, TestError>) => TestResult) {
+function CatchTestError(id: string, errorHandler?: (error: Either<Error, TestError>) => TestResult) {
    return function(target: any, key: string, descriptor: PropertyDescriptor) {
       const originalMethod = descriptor.value
 
@@ -13,6 +13,7 @@ function CatchTestError(errorHandler?: (error: Either<Error, TestError>) => Test
                   return errorHandler(error)
                }
                let response: TestResult = {
+                  id,
                   success: false,
                   message: error.message,
                   error: error.code || "500"
@@ -29,14 +30,27 @@ interface ErrorDescriptor {
    code: string
 }
 
-function CatchError(errorPool?: ErrorDescriptor[]) {
+interface ErrorPipe {
+   errorChecker: (error: any) => boolean
+   toError: ErrorDescriptor
+   skipThrow?: boolean
+}
+
+function CatchError(errorPool?: ErrorPipe[]) {
    return function(target: any, key: string, descriptor: PropertyDescriptor) {
       const originalMethod = descriptor.value
 
       descriptor.value = async function(...args: any[]) {
          try {
-               return await originalMethod.apply(this, args)
+            return await originalMethod.apply(this, args)
          } catch (error) {
+            let errorFound = errorPool?.find(errorPipe => errorPipe.errorChecker(error))
+            if (errorFound) {
+               if (errorFound.skipThrow) {
+                  return descriptor
+               }
+               throw errorFound.toError
+            }
             throw error
          }
       }
@@ -55,4 +69,4 @@ class TestError extends Error {
 }
 
 
-export { TestError, ErrorDescriptor, CatchError, CatchTestError }
+export { TestError, ErrorDescriptor, CatchError, CatchTestError, ErrorPipe }

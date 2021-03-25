@@ -1,7 +1,18 @@
-import { TestResult, Test } from "../index"
+import { TestResult, Test, SuccessFulTest } from "../index"
 import { S3Bucket } from "../resources/S3"
 import { S3 } from "aws-sdk"
 import axios from "axios";
+import { CatchTestError, TestError, CatchError } from "../util/errors"
+import {
+   WebsiteNotAvailableFrom403,
+   UnreachableEndpointFromNullResponse,
+   BucketPolicyMissingFromAWS,
+   BucketPolicyNotPublic,
+   MissingIndexErrorDocuments,
+   NoSuchWebsiteConfigurationFromAWS,
+   NoSuchPublicAccessBlockConfigurationPass,
+   AccessBlockConfigurationNotPublic
+} from "../errors/S3";
 
 class BucketWebsiteEndpointOperational implements Test {
    s3Bucket: S3Bucket
@@ -16,27 +27,17 @@ class BucketWebsiteEndpointOperational implements Test {
       }
       this.bucketWebsiteUrl = s3Bucket.getWebsiteUrl()
    }
+   @CatchTestError(BucketWebsiteEndpointOperational.name)
    async run() {
-      let testResult: TestResult = {
-         id: this.id,
-         success: false
-      }
-      try {
-         await axios.get(this.bucketWebsiteUrl)
-         testResult.success = true
-      } catch (err) {
-         if (err.response == null) {
-            testResult.message = `unreachable endpoint: ${this.bucketWebsiteUrl}`
-         }
-         else if (err.response && err.response.status == 403) {
-            testResult.message = "Website not availble, Forbidden 403"
-         }
-         else {
-            testResult.message = "Error"
-         }
-         testResult.error = err.response? err.response.status + "": "unknown"
-      }
-      return testResult
+      await this.testPublicEndpoint()
+      return SuccessFulTest(this.id)
+   }
+   @CatchError([
+      UnreachableEndpointFromNullResponse,
+      WebsiteNotAvailableFrom403
+   ])
+   async testPublicEndpoint() {
+      await axios.get(this.bucketWebsiteUrl)
    }
 }
 
@@ -47,29 +48,17 @@ class BucketPolicyIsPublic implements Test {
    constructor(s3Bucket: S3Bucket) {
       this.s3Bucket = s3Bucket
    }
+   @CatchTestError(BucketPolicyIsPublic.name)
    async run() {
-      let testResult: TestResult = {
-         id: this.id,
-         success: false
+      await this.checkBucketPolicyStatus()
+      return SuccessFulTest(this.id)
+   }
+   @CatchError([ BucketPolicyMissingFromAWS ])
+   async checkBucketPolicyStatus() {
+      let bucketPolicyObject = await this.s3Bucket.getBucketPolicyStatus()
+      if (!bucketPolicyObject.PolicyStatus?.IsPublic) {
+         throw new TestError(BucketPolicyNotPublic())
       }
-      const params: S3.GetBucketPolicyRequest = {
-         Bucket: this.s3Bucket.bucketName
-      }
-      try {
-         let bucketPolicyObject = await this.s3Bucket.s3Client.getBucketPolicyStatus(params).promise()
-         if (bucketPolicyObject.PolicyStatus?.IsPublic) {
-            testResult.success = true
-         }
-      } catch (err) {
-         if (err.code == 'NoSuchBucketPolicy') {
-            testResult.message = "You need to add a Bucket Policy"
-         }
-         else {
-            testResult.message = "Error"
-         }
-         testResult.error = err.code
-      }
-      return testResult
    }
 }
 
@@ -80,34 +69,20 @@ class BucketWebsiteConfiguration {
    constructor(s3Bucket: S3Bucket) {
       this.s3Bucket = s3Bucket
    }
+
+   @CatchTestError(BucketWebsiteConfiguration.name)
    async run() {
-      let testResult: TestResult = {
-         id: this.id,
-         success: false
+      await this.checkBucketWebsiteConfig()
+      return SuccessFulTest(this.id)
+   }
+
+   @CatchError([ NoSuchWebsiteConfigurationFromAWS ])
+   async checkBucketWebsiteConfig() {
+      let bucketWebsiteConfig = await this.s3Bucket.getBucketWebsite()
+      let { ErrorDocument, IndexDocument} = bucketWebsiteConfig
+      if (ErrorDocument?.Key == null || IndexDocument?.Suffix == null) {
+         throw new TestError(MissingIndexErrorDocuments())
       }
-      const params: S3.GetBucketWebsiteRequest = {
-         Bucket: this.s3Bucket.bucketName
-      }
-      try {
-         let bucketWebsiteConfig = await this.s3Bucket.s3Client.getBucketWebsite(params).promise()
-         let { ErrorDocument, IndexDocument} = bucketWebsiteConfig
-         if (ErrorDocument?.Key && IndexDocument?.Suffix) {
-            testResult.success = true
-         } else {
-            throw "_MissingIndexErrorDocuments"
-         }
-         ErrorDocument.Key
-      } catch(err) {
-         if( err.code == "NoSuchWebsiteConfiguration") {
-            testResult.message = "You need to configure Static Web Hosting"
-         } else if (err.code == "_MissingIndexErrorDocuments") {
-            testResult.message = "You need to include index and error documents in your website configuration"
-         } else {
-            testResult.message = "Error"
-         }
-         testResult.error = err.code
-      }
-      return testResult
    }
 }
 
@@ -118,41 +93,32 @@ class AccessBlockIsPublic implements Test {
    constructor(s3Bucket: S3Bucket) {
       this.s3Bucket = s3Bucket
    }
+
+   @CatchTestError(AccessBlockIsPublic.name)
    async run() {
-      let testResult: TestResult = {
-         id: this.id,
-         success: false
-      }
-      const params: S3.GetPublicAccessBlockRequest = {
-         Bucket: this.s3Bucket.bucketName
-      }
-      try {
-         let accessBlockObject = await this.s3Bucket.s3Client.getPublicAccessBlock(params).promise()
-         if (accessBlockObject.PublicAccessBlockConfiguration) {
-            let {
-               BlockPublicAcls,
-               BlockPublicPolicy,
-               IgnorePublicAcls,
-               RestrictPublicBuckets
-            } = accessBlockObject.PublicAccessBlockConfiguration
-            if (
-               BlockPublicAcls == false &&
-               BlockPublicPolicy == false &&
-               IgnorePublicAcls == false &&
-               RestrictPublicBuckets == false
-            ) {
-               testResult.success = true
-            }
-         }
-      } catch (err) {
-         if (err.code == "NoSuchPublicAccessBlockConfiguration") {
-            testResult.success = true
-         } else {
-            testResult.message = "Error"
-            testResult.error = err.code
+      await this.checkPublicAccessBlock()
+      return SuccessFulTest(this.id)
+   }
+
+   @CatchError([ NoSuchPublicAccessBlockConfigurationPass ])
+   async checkPublicAccessBlock() {
+      let accessBlockObject = await this.s3Bucket.getPublicAccessBlock()
+      if (accessBlockObject.PublicAccessBlockConfiguration) {
+         let {
+            BlockPublicAcls,
+            IgnorePublicAcls,
+            BlockPublicPolicy,
+            RestrictPublicBuckets
+         } = accessBlockObject.PublicAccessBlockConfiguration
+         if (
+            BlockPublicAcls ||
+            BlockPublicPolicy ||
+            IgnorePublicAcls ||
+            RestrictPublicBuckets
+         ) {
+            throw new TestError(AccessBlockConfigurationNotPublic())
          }
       }
-      return testResult
    }
 }
 

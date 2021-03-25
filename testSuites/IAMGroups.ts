@@ -38,7 +38,7 @@ class IAMGroups extends TestSuite {
    }
    adminsGroupTests () {
       return new TestGroup("AdminGroupTests", [
-         new GroupHasConfig(this.adminGroup, {
+         new GroupHasConfig("AdminGroupConfig", this.adminGroup, {
             userCount: 2,
             managedPolicies: ["AdministratorAccess"],
             managedPolicyCount: 1
@@ -47,11 +47,11 @@ class IAMGroups extends TestSuite {
    }
    financeUsersGroupTests () {
       return new TestGroup("FinanceUsersGroupTests", [
-         new GroupHasConfig(this.financeUsersGroup, {
+         new GroupHasConfig("FinanceUsersGroupConfig", this.financeUsersGroup, {
             userCount: 1,
             managedPolicyCount: 1
          }),
-         new PolicyHasConfig(this.financeUserPolicy, {
+         new PolicyHasConfig("FinanceUserPolicyConfig", this.financeUserPolicy, {
             policyDocument: {
                Statement: [
                   {
@@ -71,11 +71,11 @@ class IAMGroups extends TestSuite {
    }
    financeManagersGroupTests () {
       return new TestGroup("FinanceManagersGroupTests", [
-         new GroupHasConfig(this.financeManagersGroup, {
+         new GroupHasConfig("FinanceManagersGroupConfig", this.financeManagersGroup, {
             userCount: 1,
             managedPolicyCount: 1
          }),
-         new PolicyHasConfig(this.financeManagersPolicy, {
+         new PolicyHasConfig("FinanceManagersPolicyConfig", this.financeManagersPolicy, {
             policyDocument: {
                Statement: [
                   {

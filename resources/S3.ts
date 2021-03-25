@@ -16,6 +16,24 @@ class S3Bucket extends AWSResource {
       }
       return `http://${this.bucketName}.s3-website.${region}.amazonaws.com`
    }
+   async getBucketPolicyStatus(): Promise<S3.GetBucketPolicyStatusOutput> {
+      const params: S3.GetBucketPolicyRequest = {
+         Bucket: this.bucketName
+      }
+      return await this.s3Client.getBucketPolicyStatus(params).promise()
+   }
+   async getBucketWebsite(): Promise<S3.GetBucketWebsiteOutput> {
+      const params: S3.GetBucketWebsiteRequest = {
+         Bucket: this.bucketName
+      }
+      return await this.s3Client.getBucketWebsite(params).promise()
+   }
+   async getPublicAccessBlock(): Promise<S3.GetPublicAccessBlockOutput> {
+      const params: S3.GetPublicAccessBlockRequest = {
+         Bucket: this.bucketName
+      }
+      return await this.s3Client.getPublicAccessBlock(params).promise()
+   }
 }
 
 export { S3Bucket }

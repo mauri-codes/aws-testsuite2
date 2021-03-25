@@ -1,3 +1,4 @@
+import { String } from "aws-sdk/clients/appstream"
 import {
    PolicyForGroupNotFound,
    IncorrectUserCountForGroup,
@@ -17,18 +18,22 @@ interface GroupTestConfig {
 }
 
 class GroupHasConfig implements Test {
+   id: String = GroupHasConfig.name
    group: IAMGroup
    groupConfig: GroupTestConfig
-   constructor(group: IAMGroup, groupConfig: GroupTestConfig) {
+   constructor(id: string, group: IAMGroup, groupConfig: GroupTestConfig) {
+      if (id) {
+         this.id = id
+      }
       this.group = group
       this.groupConfig = groupConfig
    }
-   @CatchTestError()
+   @CatchTestError(GroupHasConfig.name)
    async run(): Promise<TestResult> {
       await this.hasUserCountTest()
       await this.hasManagedPolicyCountTest()
       await this.hasManagedPoliciesTest()
-      return SuccessFulTest
+      return SuccessFulTest(this.id)
    }
 
    async hasUserCountTest() {
@@ -69,17 +74,21 @@ class GroupHasConfig implements Test {
 }
 
 class PolicyHasConfig implements Test{
+   id: string = PolicyHasConfig.name
    policyConfig: PolicyTestConfig
    policy: IAMPolicy
-   constructor(policy: IAMPolicy, policyConfig: PolicyTestConfig) {
+   constructor(id:string, policy: IAMPolicy, policyConfig: PolicyTestConfig) {
+      if (id) {
+         this.id = id
+      }
       this.policy = policy
       this.policyConfig = policyConfig
    }
 
-   @CatchTestError()
+   @CatchTestError(PolicyHasConfig.name)
    async run() {
       await this.hasPolicyDocumentTest()
-      return SuccessFulTest
+      return SuccessFulTest(this.id)
    }
    async hasPolicyDocumentTest() {
       let policyVersion = await this.policy.getCurrentPolicyVersion()
