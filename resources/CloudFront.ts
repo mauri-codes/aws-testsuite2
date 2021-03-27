@@ -1,5 +1,6 @@
-import { AWSResource, Environment, TestResult } from "../index"
+import { AWSResource, Environment } from "../index"
 import { CloudFront } from "aws-sdk";
+import { NoDistributionListError, NoTaggedDistributionError, OnlyOneTaggedDistributtionAllowedError, TooManyDistributionsError } from "../errors/CloudFront";
 interface CloudFrontDistributionProps {
    id?: string
    tag?: CloudFront.Tag
@@ -8,105 +9,79 @@ class CloudFrontDistribution extends AWSResource  {
    cfClient: CloudFront
    distributionData: CloudFront.Distribution | undefined
    distributionSummary: CloudFront.DistributionSummary | undefined
+   viewerCertificate: CloudFront.ViewerCertificate | undefined
    id: string | undefined
    tag: CloudFront.Tag | undefined
+   origins: CloudFront.Origins | undefined
    constructor(props: CloudFrontDistributionProps, env?: Environment) {
-      super("CloudFront", env)
+      super("CloudFront", env)      
       this.cfClient = this.client as CloudFront
       this.tag = props.tag
       if (props.id) {
          this.id = props.id
       }
    }
-   async getDistributionDataFromTag(tag: CloudFront.Tag) {
-      const result: TestResult = {
-         success: false
+   async getViewerCertificate(): Promise<CloudFront.ViewerCertificate | undefined> {
+      if (this.viewerCertificate == null) {
+         if (this.id) {
+            let distributionData = await this.getDistributionDataFromId()
+            this.viewerCertificate = distributionData?.DistributionConfig.ViewerCertificate
+         } else if (this.tag) {
+            let distributionSummary = await this.getDistributionDataFromTag()
+            this.viewerCertificate = distributionSummary?.ViewerCertificate
+         }
       }
-      try {
-         const distributionsInfo = await this.cfClient.listDistributions({}).promise()
-         let distributionsList = distributionsInfo.DistributionList?.Items
-         if (!distributionsList) {
-            result.message = "No distribution configuration found"
-            throw "_NoDistributionList"
+      return this.viewerCertificate
+   }
+   async getOrigins(): Promise<CloudFront.Origins | undefined> {      
+      if (this.origins == null) {
+         if (this.id) {
+            let distributionData = await this.getDistributionDataFromId()
+            this.origins = distributionData?.DistributionConfig.Origins
+         } else if (this.tag) {
+            let distributionSummary = await this.getDistributionDataFromTag()            
+            this.origins = distributionSummary?.Origins
          }
-         if (distributionsList.length > 10) {
-            result.message = "You have more than 10 distributions in your account"
-            throw "_TooManyDistributions"
-         }
-         const distributionTagsPromises = distributionsList.map(distribution => {
-            return this.cfClient.listTagsForResource({Resource: distribution.ARN}).promise()
-         })
-         const distributionTags = await Promise.all(distributionTagsPromises)
-         const taggedDistributtions = this.getTaggedDistributions(distributionsList, distributionTags, tag)
+      }
+      return this.origins
+   }
+   async listDistributions(): Promise<CloudFront.DistributionSummary[]> {
+      const distributionsInfo = await this.cfClient.listDistributions({}).promise()
+      let distributionsList = distributionsInfo.DistributionList?.Items
+      if (!distributionsList) {
+         throw new Error(NoDistributionListError)
+      }
+      if (distributionsList.length > 30) {
+         throw new Error(TooManyDistributionsError)
+      }
+      return distributionsList
+   }
+   async tagsFromDistributions(distributionsList: CloudFront.DistributionSummary[]) {
+      const distributionTagsPromises = distributionsList.map(distribution => {
+         return this.cfClient.listTagsForResource({Resource: distribution.ARN}).promise()
+      })
+      return await Promise.all(distributionTagsPromises)
+   }
+   async getDistributionDataFromTag(): Promise<CloudFront.DistributionSummary | undefined> {
+      if (this.distributionSummary == null) {
+         let distributionsList = await this.listDistributions()
+         const distributionTags = await this.tagsFromDistributions(distributionsList)
+         const taggedDistributtions = this.getTaggedDistributions(distributionsList, distributionTags, this.tag|| {Key: ""})
          if (taggedDistributtions.length == 0) {
-            result.message = `No distribution found with tag [${tag.Key}, ${tag.Value}]`
-            throw "_NoTaggedDistribution"
+            throw new Error(NoTaggedDistributionError)
          } else if (taggedDistributtions.length > 1) {
-            result.message = `You have more than one distribution tagged with tag [${tag.Key}, ${tag.Value}]`
-            throw "_OnlyOneTaggedDistributtionAllowed"
+            throw new Error(OnlyOneTaggedDistributtionAllowedError)
          }
          this.distributionSummary = taggedDistributtions.pop()
-         result.success = true
       }
-      catch(err) {
-         result.error = err.code
-      }
-      return result
+      return this.distributionSummary
    }
-   async processDistributionData(
-      distributionDataFunc: (distribution: CloudFront.Distribution) => TestResult,
-      distributionSummaryFunc: (distribution: CloudFront.DistributionSummary) => TestResult
-   ) {
-      const result: TestResult = {
-         success: false
-      }
-      let distributionRequest = await this.getDistributionData()
-      if (distributionRequest.error) {
-         return distributionRequest
-      }
-      if (this.distributionData) {
-         let distributionData:  CloudFront.Distribution = this.distributionData
-         return distributionDataFunc(distributionData)
-      } else if(this.distributionSummary) {
-         let distributionSummary: CloudFront.DistributionSummary = this.distributionSummary
-         return distributionSummaryFunc(distributionSummary)
-      }
-      result.message = "No Distribution Found"
-      return result
-   }
-   async getDistributionDataFromId(Id: string) {
-      const result: TestResult = {
-         success: false
-      }
-      try {
-         const distributionsInfo = await this.cfClient.getDistribution({Id}).promise()
+   async getDistributionDataFromId(): Promise<CloudFront.Distribution | undefined> {
+      if (this.distributionData == null) {
+         const distributionsInfo = await this.cfClient.getDistribution({Id: this.id || ""}).promise()
          this.distributionData = distributionsInfo.Distribution
-         result.success = true
-      } catch (err) {
-         result.error = err.code
       }
-      return result
-   }
-   async getDistributionData() {
-      let result: TestResult = {
-         success: true
-      }
-      if (this.distributionData) {
-         return result
-      } else if (this.distributionSummary) {
-         return result
-      } else if (this.id) {
-         let distInfo = await this.getDistributionDataFromId(this.id)
-         if (distInfo.error) {
-            return distInfo
-         }
-      } else if (this.tag) {
-         let distInfo = await this.getDistributionDataFromTag(this.tag)
-         if (distInfo.error) {
-            return distInfo
-         }
-      }
-      return result
+      return this.distributionData
    }
    getTaggedDistributions(
       distributionsList: CloudFront.DistributionSummaryList,

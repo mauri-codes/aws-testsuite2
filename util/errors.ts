@@ -45,12 +45,14 @@ function CatchError(errorPool?: ErrorPipe[]) {
             return await originalMethod.apply(this, args)
          } catch (error) {
             let errorFound = errorPool?.find(errorPipe => errorPipe.errorChecker(error))
+            
             if (errorFound) {
                if (errorFound.skipThrow) {
                   return descriptor
                }
                throw errorFound.toError
             }
+            
             throw error
          }
       }

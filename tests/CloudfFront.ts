@@ -1,9 +1,15 @@
-import { TestResult, Test, TestGroup, TestSuite } from "../index"
-import { CloudFrontDistribution } from "../resources/CloudFront";
-import { CloudFront } from "aws-sdk";
-import { AWSResourceGroup } from "../index"
+import { Test, SuccessFulTest } from "../index"
+import { CloudFrontDistribution } from "../resources/CloudFront"
 import { S3Bucket } from "../resources/S3";
-import { BucketPolicyIsPublic, AccessBlockIsPublic, BucketWebsiteConfiguration, BucketWebsiteEndpointOperational } from "../tests/S3";
+import { CatchError, CatchTestError, TestError } from "../util/errors"
+import {
+   CloudFrontNotDefaultCertificate,
+   NoDistributionListFromError,
+   NoS3WebsiteDomainInCloudFront,
+   NoTaggedDistributionFromError,
+   OnlyOneTaggedDistributtionAllowedFromError,
+   TooManyDistributionsFromError
+} from "../errors/CloudFront";
 
 
 class DistributionHasHTTPSDefaultConfiguration implements Test {
@@ -13,41 +19,23 @@ class DistributionHasHTTPSDefaultConfiguration implements Test {
       this.distribution = distribution
 
    }
-   async run() {
-      const result: TestResult = {
-         id: this.id,
-         success: false
-      }
-      let checkViewerCertificate = (viewerCertificate: CloudFront.ViewerCertificate | undefined) => {
-         const result: TestResult = {
-            success: false
-         }
-         if (viewerCertificate?.CloudFrontDefaultCertificate && viewerCertificate.CertificateSource == "cloudfront") {
-            result.success = true
-         } else {
-            result.error = "_CloudFrontNotDefaultCertificate"
-            result.message = "CloudFront is not your default Certificate Source"
-         }
-         return result
 
+   @CatchError([
+      OnlyOneTaggedDistributtionAllowedFromError,
+      TooManyDistributionsFromError,
+      NoTaggedDistributionFromError,
+      NoDistributionListFromError
+   ])
+   async checkViewerCertificate() {
+      let viewerCertificate = await this.distribution.getViewerCertificate()
+      if (!(viewerCertificate?.CloudFrontDefaultCertificate && viewerCertificate.CertificateSource == "cloudfront")) {
+         throw new TestError(CloudFrontNotDefaultCertificate())
       }
-      let distributionDataFunc = (data: CloudFront.Distribution) => {
-         let viewerCertificate = data.DistributionConfig.ViewerCertificate
-         return checkViewerCertificate(viewerCertificate)
-      }
-      let distributionSummaryFunc = (data: CloudFront.DistributionSummary) => {
-         let viewerCertificate = data.ViewerCertificate
-         return checkViewerCertificate(viewerCertificate)
-      }
-      try {
-         let request = await this.distribution.processDistributionData(distributionDataFunc, distributionSummaryFunc)
-         request.id = this.id
-         return request
-      } catch (err) {
-         result.message = "Error"
-         result.error = err.code
-      }
-      return result
+   }
+   @CatchTestError(DistributionHasHTTPSDefaultConfiguration.name)
+   async run() {
+      await this.checkViewerCertificate()
+      return SuccessFulTest(this.id)
    }
 }
 
@@ -59,44 +47,25 @@ class DistributionHasS3WebsiteOrigin implements Test {
       this.distribution = distribution
       this.s3Bucket = s3Bucket
    }
+   @CatchError([
+      OnlyOneTaggedDistributtionAllowedFromError,
+      TooManyDistributionsFromError,
+      NoTaggedDistributionFromError,
+      NoDistributionListFromError
+   ])
+   async checkOrigins() {
+      let origins = await this.distribution.getOrigins()      
+      const hasS3Domain = origins?.Items.some(origin =>
+         `http://${origin.DomainName}` == this.s3Bucket.getWebsiteUrl() || origin.DomainName == this.s3Bucket.getWebsiteUrl()
+      )
+      if (!hasS3Domain) {
+         throw new TestError(NoS3WebsiteDomainInCloudFront(this.s3Bucket.getWebsiteUrl().split("//")[1]))
+      }
+   }
+   @CatchTestError(DistributionHasS3WebsiteOrigin.name)
    async run() {
-      const result: TestResult = {
-         id: this.id,
-         success: false
-      }
-      let checkOrigins = (origins: CloudFront.Origins | undefined) => {
-         const result: TestResult = {
-            success: false
-         }
-         const hasS3Domain = origins?.Items.some(origin =>
-            `http://${origin.DomainName}` == this.s3Bucket.getWebsiteUrl() || origin.DomainName == this.s3Bucket.getWebsiteUrl()
-         )
-         if (hasS3Domain) {
-            result.success = true
-         } else {
-            result.error = "_NoS3WebsiteDomainInCloudFront"
-            result.message = `You need to have an origin in CloudFront for your S3 website endpoint ${this.s3Bucket.getWebsiteUrl().split("//")[1]}`
-         }
-         return result
-
-      }
-      let distributionDataFunc = (data: CloudFront.Distribution) => {
-         let origins = data.DistributionConfig.Origins
-         return checkOrigins(origins)
-      }
-      let distributionSummaryFunc = (data: CloudFront.DistributionSummary) => {
-         let origins = data.Origins
-         return checkOrigins(origins)
-      }
-      try {
-         let request = await this.distribution.processDistributionData(distributionDataFunc, distributionSummaryFunc)
-         request.id = this.id
-         return request
-      } catch (err) {
-         result.message = "Error"
-         result.error = err.code
-      }
-      return result
+      await this.checkOrigins()
+      return SuccessFulTest(this.id)
    }
 }
 
