@@ -4,9 +4,9 @@ import { IAMGroup, IAMPolicy } from "../resources/IAM";
 import { GroupHasConfig, PolicyHasConfig } from "../tests/IAM";
 
 interface IAMGroupsParams {
-   adminGroup: string
-   financeUserGroup: string
-   financeManagerGroup: string
+   adminGroup?: string
+   financeUserGroup?: string
+   financeManagerGroup?: string
 }
 
 class IAMGroups extends TestSuite {
@@ -16,7 +16,11 @@ class IAMGroups extends TestSuite {
    adminPolicy: IAMPolicy
    financeUserPolicy: IAMPolicy
    financeManagersPolicy: IAMPolicy
-   constructor({adminGroup, financeManagerGroup, financeUserGroup}: IAMGroupsParams, env: Environment) {
+   constructor({
+      adminGroup="jn-admins",
+      financeManagerGroup="jn-finance-managers",
+      financeUserGroup="jn-finance-users"
+   }: IAMGroupsParams, env: Environment) {
       super()
       let environment = new AWSEnvironment(env)
       this.adminGroup = new IAMGroup(adminGroup, environment)
