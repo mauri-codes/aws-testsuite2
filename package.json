@@ -1,12 +1,11 @@
 {
   "name": "aws-testsuite",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "publish": "cd lib && npm publish",
     "compile": "rm -rf lib && tsc -p . && cp package.json lib/package.json && cp -r node_modules lib/node_modules"
   },
   "repository": {
