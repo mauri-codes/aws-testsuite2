@@ -1,4 +1,3 @@
-import { String } from "aws-sdk/clients/appstream"
 import {
    PolicyForGroupNotFound,
    IncorrectUserCountForGroup,
@@ -7,9 +6,9 @@ import {
    PolicyStatementNotFound
 } from "../errors/IAM"
 import { TestResult, Test, SuccessFulTest } from "../index"
+import { CatchTestError, TestError } from "../util/errors"
 import { IAMUser, IAMGroup, IAMPolicy } from "../resources/IAM"
 import { AWSPolicyDocument, PolicyStatement, PolicyTestConfig } from "../types/IAM.types"
-import { CatchTestError, TestError } from "../util/errors"
 
 interface GroupTestConfig {
    userCount?: number
@@ -18,7 +17,7 @@ interface GroupTestConfig {
 }
 
 class GroupHasConfig implements Test {
-   id: String = GroupHasConfig.name
+   id: string = GroupHasConfig.name
    group: IAMGroup
    groupConfig: GroupTestConfig
    constructor(id: string, group: IAMGroup, groupConfig: GroupTestConfig) {

@@ -7,18 +7,18 @@ function CatchTestError(id: string, errorHandler?: (error: Either<Error, TestErr
 
       descriptor.value = async function(...args: any[]): Promise<TestResult> {
          try {
-               return await originalMethod.apply(this, args)
+            return await originalMethod.apply(this, args)
          } catch (error) {
-               if(errorHandler) {
-                  return errorHandler(error)
-               }
-               let response: TestResult = {
-                  id,
-                  success: false,
-                  message: error.message,
-                  error: error.code || "500"
-               }
-               return response
+            if(errorHandler) {
+               return errorHandler(error)
+            }
+            let response: TestResult = {
+               id,
+               success: false,
+               message: error.message,
+               error: error.code || "500"
+            }
+            return response
          }
       }
       return descriptor

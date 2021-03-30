@@ -1,8 +1,9 @@
 import AWS, {
-   S3,
    CloudFront,
+   Lambda,
    IAM,
-   STS
+   STS,
+   S3
 } from "aws-sdk"
 
 export interface Environment {
@@ -26,14 +27,15 @@ export interface TestResult {
    error?: string
 }
 
-export type AWSService = "S3" | "CloudFront" | "IAM"
+export type AWSService = "S3" | "CloudFront" | "IAM" | "Lambda"
 
 const clients: {
    [key in AWSService]: () => any
 } = {
    "S3": () => new S3(),
    "CloudFront": () => new CloudFront(),
-   "IAM": () => new IAM()
+   "IAM": () => new IAM(),
+   "Lambda": () => new Lambda()
 }
 interface EnvironmentConfig {
    credentials?: {
