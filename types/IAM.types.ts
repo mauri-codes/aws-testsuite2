@@ -6,13 +6,17 @@ export interface PolicyStatement {
    Action: string | string[]
    Resource: string | string[]
    Sid?: string
+   Principal?: any
+   Condition?: any
 }
 
 export interface AWSPolicyDocument {
-   Statement: PolicyStatement[]
+   Statement: PolicyStatement[],
+   Version?: string
+   Id?: string
 }
 
 export interface PolicyTestConfig {
    policyDocument?: AWSPolicyDocument
-   policyName?: String
+   policyName?: string
 }

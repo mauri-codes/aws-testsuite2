@@ -1,4 +1,4 @@
-import { ErrorDescriptor, ErrorPipe } from "../util/errors";
+import { ErrorDescriptor, ErrorPipe, AWSError, ResourceError } from "../util/errors";
 
 let IncorrectLambdaConfiguration: (
    lambda: string | undefined,
@@ -17,7 +17,14 @@ let NoLambdaFunctionFound: () => ErrorDescriptor =
       message: "No such lambda function"
    })
 
+const ResourceNotFoundException = "ResourceNotFoundException"
+let NullFromResourceNotFound:ResourceError = {
+   errorChecker: AWSError(ResourceNotFoundException),
+   value: null
+}
+
 export {
    IncorrectLambdaConfiguration,
-   NoLambdaFunctionFound
+   NoLambdaFunctionFound,
+   NullFromResourceNotFound
 }

@@ -60,6 +60,36 @@ function CatchError(errorPool?: ErrorPipe[]) {
    }
 }
 
+interface ResourceError {
+   errorChecker: (error: any) => boolean,
+   value: any
+}
+
+const AWSError = (awsError: string) => {
+   return (error: any) => error.code == awsError
+}
+
+function CatchResourceError(errorPool?: ResourceError[]) {
+   return function(target: any, key: string, descriptor: PropertyDescriptor) {
+      const originalMethod = descriptor.value
+
+      descriptor.value = async function(...args: any[]) {
+         try {
+            return await originalMethod.apply(this, args)
+         } catch (error) {            
+            let errorFound = errorPool?.find(errorPipe => errorPipe.errorChecker(error))
+            
+            if (errorFound) {
+               return errorFound.value
+            }
+            
+            throw error
+         }
+      }
+      return descriptor
+   }
+}
+
 class TestError extends Error {
    info: ErrorDescriptor
    code: string
@@ -71,4 +101,4 @@ class TestError extends Error {
 }
 
 
-export { TestError, ErrorDescriptor, CatchError, CatchTestError, ErrorPipe }
+export { TestError, ErrorDescriptor, CatchError, CatchTestError, ErrorPipe, CatchResourceError, ResourceError, AWSError }

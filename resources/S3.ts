@@ -34,6 +34,12 @@ class S3Bucket extends AWSResource {
       }
       return await this.s3Client.getPublicAccessBlock(params).promise()
    }
+   async getBucketNotificationConfiguration() {
+      const params: S3.GetBucketNotificationConfigurationRequest = {
+         Bucket: this.bucketName
+      }
+      return await this.s3Client.getBucketNotificationConfiguration(params).promise()
+   }
 }
 
 export { S3Bucket }
