@@ -12,10 +12,16 @@ let IncorrectLambdaConfiguration: (
    })
 
 let NoLambdaFunctionFound: () => ErrorDescriptor =
-   () => ({
-      code: NoLambdaFunctionFound.name,
-      message: "No such lambda function"
-   })
+() => ({
+   code: NoLambdaFunctionFound.name,
+   message: "No such lambda function"
+})
+
+let NoLambdaTriggerFoundForS3: (props: {lambda?: string}) => ErrorDescriptor =
+({lambda}) => ({
+   code: NoLambdaFunctionFound.name,
+   message: `${lambda} Function does not provide an S3 Bucket as Trigger`
+})
 
 const ResourceNotFoundException = "ResourceNotFoundException"
 let NullFromResourceNotFound:ResourceError = {
@@ -25,6 +31,7 @@ let NullFromResourceNotFound:ResourceError = {
 
 export {
    IncorrectLambdaConfiguration,
+   NoLambdaTriggerFoundForS3,
    NoLambdaFunctionFound,
    NullFromResourceNotFound
 }

@@ -1,8 +1,8 @@
-import { TestResult, Test, SuccessFulTest } from "../index"
+import { Test, SuccessFulTest } from "../index"
 import { S3Bucket } from "../resources/S3"
 import { S3 } from "aws-sdk"
 import axios from "axios";
-import { CatchTestError, TestError, CatchError } from "../util/errors"
+import { CatchTestError, TestError, CatchError, ErrorDescriptor } from "../util/errors"
 import {
    WebsiteNotAvailableFrom403,
    UnreachableEndpointFromNullResponse,
@@ -11,8 +11,10 @@ import {
    MissingIndexErrorDocuments,
    NoSuchWebsiteConfigurationFromAWS,
    NoSuchPublicAccessBlockConfigurationPass,
-   AccessBlockConfigurationNotPublic
+   AccessBlockConfigurationNotPublic,
+   NoS3BucketFound
 } from "../errors/S3";
+import { S3EventType } from "../types/S3.types";
 
 class BucketWebsiteEndpointOperational implements Test {
    s3Bucket: S3Bucket
@@ -122,4 +124,74 @@ class AccessBlockIsPublic implements Test {
    }
 }
 
-export { BucketPolicyIsPublic, AccessBlockIsPublic, BucketWebsiteConfiguration, BucketWebsiteEndpointOperational }
+class S3Test {
+   s3Bucket: S3Bucket
+   externalError: ErrorDescriptor | undefined
+   constructor(bucket: S3Bucket, error?: ErrorDescriptor) {
+      this.s3Bucket = bucket
+      this.externalError = error
+   }
+   checkResources () {
+      if (this.s3Bucket.bucketName == null) {
+         if (this.externalError != null) {
+            throw new TestError(this.externalError)
+         }
+         throw new TestError(NoS3BucketFound())
+      }
+   }
+}
+
+interface LambdaTriggerConfig {
+   eventType: keyof typeof S3EventType
+   prefix?: string
+   sufix?: string
+}
+class LambdaTriggerConfiguration extends S3Test implements Test {
+   s3Bucket: S3Bucket
+   triggerConfig: LambdaTriggerConfig
+   id: string = LambdaTriggerConfiguration.name
+   constructor(s3Bucket: S3Bucket, triggerConfig: LambdaTriggerConfig, error?: ErrorDescriptor) {
+      super(s3Bucket, error)
+      this.s3Bucket = s3Bucket
+      this.triggerConfig = triggerConfig
+   }
+
+   @CatchTestError(LambdaTriggerConfiguration.name)
+   async run() {
+      this.checkResources()
+      await this.hasLambdaTriggerConfiguration()
+      return SuccessFulTest(this.id)
+   }
+
+   async hasLambdaTriggerConfiguration() {
+      let { LambdaFunctionConfigurations } = await this.s3Bucket?.getBucketNotificationConfiguration()
+      let test = (event: string[]) => false
+      if (this.triggerConfig.eventType === S3EventType.ALL_CREATE) {
+         test = (event:string[]) => event.includes('s3:ObjectCreated:*')
+      }
+      LambdaFunctionConfigurations?.some(config => this.checkNotificationConfig(config, test))      
+   }
+   checkNotificationConfig(config: S3.LambdaFunctionConfiguration, eventTest: (event:string[]) => boolean) {
+      let eventArrayTest = eventTest(config.Events)
+      let sufixTest = true
+      let prefixTest = true
+      let filterRules = config.Filter?.Key?.FilterRules
+      if (this.triggerConfig.prefix) {
+         let prefixRule = filterRules?.find(rule => rule.Name === "Prefix")
+         prefixTest = prefixRule?.Value === this.triggerConfig.prefix
+      }
+      if (this.triggerConfig.sufix) {
+         let sufixRule = filterRules?.find(rule => rule.Name === "Sufix")
+         sufixTest = sufixRule?.Value === this.triggerConfig.sufix
+      }
+      return eventArrayTest && sufixTest && prefixTest
+   }
+}
+
+export {
+   AccessBlockIsPublic,
+   BucketPolicyIsPublic,
+   LambdaTriggerConfiguration,
+   BucketWebsiteConfiguration,
+   BucketWebsiteEndpointOperational
+}

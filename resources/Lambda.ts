@@ -3,7 +3,6 @@ import { Lambda, S3 } from "aws-sdk"
 import { AWSPolicyDocument } from "../types/IAM.types"
 import { CatchResourceError } from "../util/errors"
 import { NullFromResourceNotFound } from "../errors/Lambda"
-import { S3Bucket } from "./S3"
 
 
 interface LambdaFunctionProps {
@@ -18,11 +17,9 @@ class LambdaFunction extends AWSResource {
    config: Lambda.FunctionConfiguration | undefined
    policy: AWSPolicyDocument | undefined | null
    s3Triggers: S3.LambdaFunctionConfiguration[] | undefined | null
-   s3TriggerBucket: S3Bucket | undefined
-   env: Environment
-   constructor({qualifier=LATEST, functionName}: LambdaFunctionProps, env: Environment) {
+   s3TriggerBucket: string | undefined | null
+   constructor({qualifier=LATEST, functionName}: LambdaFunctionProps, env?: Environment) {
       super("Lambda", env)
-      this.env = env
       this.lambdaClient = this.client as Lambda
       this.qualifier = qualifier
       this.name = functionName
@@ -49,31 +46,24 @@ class LambdaFunction extends AWSResource {
       }
       return this.policy
    }
-   async getS3Triggers() {
-      if (this.s3Triggers === undefined) {
-         let s3Bucket = await this.getS3TriggerBucket()
-         if (s3Bucket != null) {
-            this.s3TriggerBucket = new S3Bucket(s3Bucket, this.env)
-            this.s3Triggers = (await this.s3TriggerBucket.getBucketNotificationConfiguration()).LambdaFunctionConfigurations
-         } else {
-            this.s3Triggers = null
+   async getS3TriggerBucket(): Promise<string | null | undefined> {
+      if (this.s3TriggerBucket === undefined) {
+         let policyDocument = await this.getLambdaPolicyDocument()
+         if (policyDocument == null) {
+            this.s3TriggerBucket = null
+            return null
          }
+         let [ statement ] = policyDocument?.Statement
+         let s3Service = statement.Principal.Service === 's3.amazonaws.com'
+         let action = statement.Action === 'lambda:InvokeFunction'
+         if (!s3Service || !action) {
+            this.s3TriggerBucket = null
+            return null
+         }
+         let bucketArn = statement.Condition.ArnLike['AWS:SourceArn'] as string
+         this.s3TriggerBucket = bucketArn.split(":").pop() || null
+         return this.s3TriggerBucket
       }
-      return this.s3Triggers
-   }
-   async getS3TriggerBucket(): Promise<string | null> {
-      let policyDocument = await this.getLambdaPolicyDocument()
-      if (policyDocument == null) {
-         return null
-      }
-      let [ statement ] = policyDocument?.Statement
-      let s3Service = statement.Principal.Service === 's3.amazonaws.com'
-      let action = statement.Action === 'lambda:InvokeFunction'
-      if (!s3Service || !action) {
-         return null
-      }
-      let bucketArn = statement.Condition.ArnLike['AWS:SourceArn'] as string
-      return bucketArn.split(":").pop() || null
    }
    @CatchResourceError([NullFromResourceNotFound])
    async getPolicy(): Promise<Lambda.GetPolicyResponse | null> {

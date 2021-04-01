@@ -92,6 +92,12 @@ let AccessBlockConfigurationNotPublic: () => ErrorDescriptor =
    }
 )
 
+let NoS3BucketFound: () => ErrorDescriptor =
+() => ({
+   code: NoS3BucketFound.name,
+   message: "No such S3 bucket"
+})
+
 export {
    NoSuchPublicAccessBlockConfigurationPass,
    UnreachableEndpointFromNullResponse,
@@ -105,5 +111,6 @@ export {
    BucketPolicyNotPublic,
    NoSuchBucketPolicy,
    UnreachableEndpoint,
-   WebsiteNotAvailable
+   WebsiteNotAvailable,
+   NoS3BucketFound
 }

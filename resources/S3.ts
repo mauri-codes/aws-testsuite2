@@ -2,9 +2,9 @@ import { AWSResource, Environment } from "../index"
 import { S3 } from "aws-sdk";
 
 class S3Bucket extends AWSResource {
-   bucketName: string
+   bucketName: string | undefined
    s3Client: S3
-   constructor(bucketName: string, env?: Environment) {
+   constructor(bucketName: string | undefined, env?: Environment) {
       super("S3", env)
       this.s3Client = this.client as S3
       this.bucketName = bucketName
@@ -18,25 +18,25 @@ class S3Bucket extends AWSResource {
    }
    async getBucketPolicyStatus(): Promise<S3.GetBucketPolicyStatusOutput> {
       const params: S3.GetBucketPolicyRequest = {
-         Bucket: this.bucketName
+         Bucket: this.bucketName || ""
       }
       return await this.s3Client.getBucketPolicyStatus(params).promise()
    }
    async getBucketWebsite(): Promise<S3.GetBucketWebsiteOutput> {
       const params: S3.GetBucketWebsiteRequest = {
-         Bucket: this.bucketName
+         Bucket: this.bucketName || ""
       }
       return await this.s3Client.getBucketWebsite(params).promise()
    }
    async getPublicAccessBlock(): Promise<S3.GetPublicAccessBlockOutput> {
       const params: S3.GetPublicAccessBlockRequest = {
-         Bucket: this.bucketName
+         Bucket: this.bucketName || ""
       }
       return await this.s3Client.getPublicAccessBlock(params).promise()
    }
    async getBucketNotificationConfiguration() {
       const params: S3.GetBucketNotificationConfigurationRequest = {
-         Bucket: this.bucketName
+         Bucket: this.bucketName || ""
       }
       return await this.s3Client.getBucketNotificationConfiguration(params).promise()
    }
