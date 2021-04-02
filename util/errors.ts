@@ -90,6 +90,22 @@ function CatchResourceError(errorPool?: ResourceError[]) {
    }
 }
 
+function CatchInferanceError() {
+   return function(target: any, key: string, descriptor: PropertyDescriptor) {
+      const originalMethod = descriptor.value
+
+      descriptor.value = async function(...args: any[]) {
+         try {
+            return await originalMethod.apply(this, args)
+         } catch (error) {
+            console.log(error);
+            return null
+         }
+      }
+      return descriptor
+   }
+}
+
 class TestError extends Error {
    info: ErrorDescriptor
    code: string
@@ -101,4 +117,14 @@ class TestError extends Error {
 }
 
 
-export { TestError, ErrorDescriptor, CatchError, CatchTestError, ErrorPipe, CatchResourceError, ResourceError, AWSError }
+export {
+   TestError,
+   ErrorDescriptor,
+   CatchError,
+   CatchTestError,
+   CatchInferanceError,
+   ErrorPipe,
+   CatchResourceError,
+   ResourceError,
+   AWSError
+}

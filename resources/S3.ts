@@ -1,13 +1,16 @@
 import { AWSResource, Environment } from "../index"
 import { S3 } from "aws-sdk";
 
+interface S3BucketInput {
+   bucketName?: string
+}
 class S3Bucket extends AWSResource {
    bucketName: string | undefined
    s3Client: S3
-   constructor(bucketName: string | undefined, env?: Environment) {
+   constructor(bucket: S3BucketInput | undefined, env?: Environment) {
       super("S3", env)
       this.s3Client = this.client as S3
-      this.bucketName = bucketName
+      this.bucketName = bucket?.bucketName
    }
    getWebsiteUrl() {
       let region = this.s3Client.config.region

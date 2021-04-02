@@ -90,8 +90,7 @@ class PolicyHasConfig implements Test{
       return SuccessFulTest(this.id)
    }
    async hasPolicyDocumentTest() {
-      let policyVersion = await this.policy.getCurrentPolicyVersion()
-      let document = await this.policy.getPolicyDocument(policyVersion?.VersionId || "")
+      let document = await this.policy.getPolicyDocument()
       if (document != undefined && this.policyConfig.policyDocument) {
          let policyDocument:AWSPolicyDocument = document
          let configPolicyStatements = this.policyConfig.policyDocument.Statement

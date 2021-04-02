@@ -13,7 +13,7 @@ class S3StaticWebsite extends TestSuite {
         super()
         this.s3BucketName = parameters.s3BucketName
         this.cloudFrontTag = cloudFrontTag
-        const bucket = new S3Bucket(this.s3BucketName, env)
+        const bucket = new S3Bucket({bucketName: this.s3BucketName}, env)
         const cfDistribution = new CloudFrontDistribution({tag: this.cloudFrontTag}, env)
         this.testGroups = [
             this.s3TestGroup(bucket),

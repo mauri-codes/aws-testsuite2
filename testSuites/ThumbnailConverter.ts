@@ -5,53 +5,77 @@ import { Environment } from "../index";
 import { LambdaFunction } from "../resources/Lambda";
 import { LambdaConfigTest } from "../tests/Lambda";
 import { S3EventType } from "../types/S3.types";
-import { ErrorDescriptor } from "../util/errors";
+import { CatchInferanceError, ErrorDescriptor } from "../util/errors";
 import { NoLambdaTriggerFoundForS3 } from "../errors/Lambda";
+import { IAMPolicy, IAMRole } from "../resources/IAM";
 
 interface ThumbnailConverterProps {
-   thumbnailBucketName: string
    functionName: string
 }
 class ThumbnailConverter extends TestSuite {
-   thumbnailBucketName: string
    functionName: string
    env: Environment | undefined
-   constructor({functionName="jn-thumbnail-converter", thumbnailBucketName}: ThumbnailConverterProps, env?: Environment) {
+   lambda: LambdaFunction
+   lambdaRole: IAMRole
+   lambdaPolicy: IAMPolicy
+   imagesBucket: S3Bucket
+   constructor({functionName="jn-thumbnail-converter"}: ThumbnailConverterProps, env?: Environment) {
       super()
-      this.thumbnailBucketName = thumbnailBucketName
       this.functionName = functionName
       this.env = env
+      this.lambda = new LambdaFunction({functionName}, env)
+      this.lambdaRole = new IAMRole({})
+      this.lambdaPolicy = new IAMPolicy({})
+      this.imagesBucket = new S3Bucket({})
    }
-   async run() {
-      const thumbnailBucket = new S3Bucket(this.thumbnailBucketName, this.env)
-      const lambda = new LambdaFunction({functionName: this.functionName}, this.env)
-      let imagesBucketName = await lambda.getS3TriggerBucket()
-      let imagesBucket: S3Bucket = new S3Bucket(undefined)
-      if (imagesBucketName) {
-         imagesBucket = new S3Bucket(imagesBucketName, this.env)
-      }      
+   async run() {  
+      await this.inferInfrastructure()
       this.testGroups = [
-         this.lambdaConfiguration(lambda),
-         this.bucketsConfiguration(imagesBucket, NoLambdaTriggerFoundForS3({lambda: lambda.name || "Lambda"}))
+         this.lambdaConfiguration(),
+         this.bucketsConfiguration()
       ]
       return await super.run()
    }
-   lambdaConfiguration(lambda: LambdaFunction) {
+   async getLambdaPolicy() {
+      let roleArn = await this.lambda.getLambdaRoleArn()
+      if (roleArn != null) {
+         this.lambdaRole = new IAMRole({roleArn}, this.env)         
+         let policies = await this.lambdaRole.getAttachedRolePolicies()
+         if (policies != null) {
+            let policyArn = policies[0].Arn
+            this.lambdaPolicy = new IAMPolicy({policyArn}, this.env)
+         }
+      }
+   }
+   async getImagesBucket() {
+      let imagesBucketName = await this.lambda.getS3TriggerBucket()
+      if (imagesBucketName) {
+         this.imagesBucket = new S3Bucket({bucketName: imagesBucketName}, this.env)
+      }
+   }
+   @CatchInferanceError()
+   async inferInfrastructure() {
+      await Promise.all([
+         this.getLambdaPolicy(),
+         this.getImagesBucket()
+      ])
+   }
+   lambdaConfiguration() {
       return new TestGroup("lambdaConfiguration", [
-         new LambdaConfigTest(lambda, {
+         new LambdaConfigTest(this.lambda, {
             Handler: "handler.handler",
             MemorySize: 128,
             Timeout: 12
          })
       ])
    }
-   bucketsConfiguration(imagesBucket: S3Bucket, error?: ErrorDescriptor) {
+   bucketsConfiguration() {
       return new TestGroup("bucketsConfiguration", [
-         new LambdaTriggerConfiguration(imagesBucket, {
+         new LambdaTriggerConfiguration(this.imagesBucket, {
             eventType: S3EventType.ALL_CREATE,
             prefix: "images/"
          },
-         error
+         NoLambdaTriggerFoundForS3({lambda: this.lambda.name || "Lambda"})
          )
       ])
    }

@@ -24,6 +24,10 @@ class LambdaFunction extends AWSResource {
       this.qualifier = qualifier
       this.name = functionName
    }
+   async getLambdaRoleArn() {
+      const lambdaConfig = await this.getFunctionConfiguration()
+      return lambdaConfig?.Role
+   }
    async getFunctionConfiguration(): Promise<Lambda.FunctionConfiguration | undefined> {
       if (this.config === undefined) {
          let params = {

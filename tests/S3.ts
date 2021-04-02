@@ -12,7 +12,8 @@ import {
    NoSuchWebsiteConfigurationFromAWS,
    NoSuchPublicAccessBlockConfigurationPass,
    AccessBlockConfigurationNotPublic,
-   NoS3BucketFound
+   NoS3BucketFound,
+   NoTriggerConfigurationFound
 } from "../errors/S3";
 import { S3EventType } from "../types/S3.types";
 
@@ -169,7 +170,10 @@ class LambdaTriggerConfiguration extends S3Test implements Test {
       if (this.triggerConfig.eventType === S3EventType.ALL_CREATE) {
          test = (event:string[]) => event.includes('s3:ObjectCreated:*')
       }
-      LambdaFunctionConfigurations?.some(config => this.checkNotificationConfig(config, test))      
+      let configFound = LambdaFunctionConfigurations?.some(config => this.checkNotificationConfig(config, test))
+      if (!configFound) {
+         throw new TestError(NoTriggerConfigurationFound(JSON.stringify(this.triggerConfig)))
+      }
    }
    checkNotificationConfig(config: S3.LambdaFunctionConfiguration, eventTest: (event:string[]) => boolean) {
       let eventArrayTest = eventTest(config.Events)

@@ -98,6 +98,12 @@ let NoS3BucketFound: () => ErrorDescriptor =
    message: "No such S3 bucket"
 })
 
+let NoTriggerConfigurationFound: (config: string) => ErrorDescriptor =
+(config) => ({
+   code: NoTriggerConfigurationFound.name,
+   message: `No trigger configuration found that matches ${config}`
+})
+
 export {
    NoSuchPublicAccessBlockConfigurationPass,
    UnreachableEndpointFromNullResponse,
@@ -106,6 +112,7 @@ export {
    WebsiteNotAvailableFrom403,
    NoSuchPublicAccessBlockConfiguration,
    AccessBlockConfigurationNotPublic,
+   NoTriggerConfigurationFound,
    NoSuchWebsiteConfiguration,
    MissingIndexErrorDocuments,
    BucketPolicyNotPublic,
