@@ -6,8 +6,9 @@ import { LambdaFunction } from "../resources/Lambda";
 import { LambdaConfigTest } from "../tests/Lambda";
 import { S3EventType } from "../types/S3.types";
 import { CatchInferanceError, ErrorDescriptor } from "../util/errors";
-import { NoLambdaTriggerFoundForS3 } from "../errors/Lambda";
+import { NoLambdaRoleFound, NoLambdaTriggerFoundForS3 } from "../errors/Lambda";
 import { IAMPolicy, IAMRole } from "../resources/IAM";
+import { RoleHasConfig } from "../tests/IAM";
 
 interface ThumbnailConverterProps {
    functionName: string
@@ -19,6 +20,7 @@ class ThumbnailConverter extends TestSuite {
    lambdaRole: IAMRole
    lambdaPolicy: IAMPolicy
    imagesBucket: S3Bucket
+   thumbnailsBucket: S3Bucket
    constructor({functionName="jn-thumbnail-converter"}: ThumbnailConverterProps, env?: Environment) {
       super()
       this.functionName = functionName
@@ -27,23 +29,32 @@ class ThumbnailConverter extends TestSuite {
       this.lambdaRole = new IAMRole({})
       this.lambdaPolicy = new IAMPolicy({})
       this.imagesBucket = new S3Bucket({})
+      this.thumbnailsBucket = new S3Bucket({})
    }
    async run() {  
       await this.inferInfrastructure()
       this.testGroups = [
-         this.lambdaConfiguration(),
-         this.bucketsConfiguration()
+         this.resourcesConfiguration(),
+         this.accessConfiguration()
       ]
       return await super.run()
    }
    async getLambdaPolicy() {
       let roleArn = await this.lambda.getLambdaRoleArn()
       if (roleArn != null) {
-         this.lambdaRole = new IAMRole({roleArn}, this.env)         
+         this.lambdaRole = new IAMRole({roleArn}, this.env)
          let policies = await this.lambdaRole.getAttachedRolePolicies()
          if (policies != null) {
-            let policyArn = policies[0].Arn
-            this.lambdaPolicy = new IAMPolicy({policyArn}, this.env)
+            let [{PolicyArn}] = policies
+            this.lambdaPolicy = new IAMPolicy({policyArn: PolicyArn}, this.env)
+            let putObjectStatement = await this.lambdaPolicy.getPolicyStatementFromAction("s3:PutObject")
+            if (putObjectStatement) {
+               let resource = putObjectStatement.Resource
+               if (typeof resource === 'string') {
+                  let bucketName = resource.split("/")[0].split(":")[1]
+                  this.thumbnailsBucket = new S3Bucket({bucketName})
+               }
+            }
          }
       }
    }
@@ -60,8 +71,8 @@ class ThumbnailConverter extends TestSuite {
          this.getImagesBucket()
       ])
    }
-   lambdaConfiguration() {
-      return new TestGroup("lambdaConfiguration", [
+   resourcesConfiguration() {
+      return new TestGroup("resourcesConfiguration", [
          new LambdaConfigTest(this.lambda, {
             Handler: "handler.handler",
             MemorySize: 128,
@@ -69,13 +80,16 @@ class ThumbnailConverter extends TestSuite {
          })
       ])
    }
-   bucketsConfiguration() {
-      return new TestGroup("bucketsConfiguration", [
-         new LambdaTriggerConfiguration(this.imagesBucket, {
+   accessConfiguration() {
+      return new TestGroup("accessConfiguration", [
+         new LambdaTriggerConfiguration("LambdaTriggerConfigurationTest", this.imagesBucket, {
             eventType: S3EventType.ALL_CREATE,
             prefix: "images/"
          },
-         NoLambdaTriggerFoundForS3({lambda: this.lambda.name || "Lambda"})
+            NoLambdaTriggerFoundForS3({lambda: this.lambda.name})
+         ),
+         new RoleHasConfig("LambdaRoleConfigTest", this.lambdaRole, {attachedPoliciesCount: 1},
+            NoLambdaRoleFound({lambda: this.lambda.name})
          )
       ])
    }

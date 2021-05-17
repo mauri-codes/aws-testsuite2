@@ -20,3 +20,8 @@ export interface PolicyTestConfig {
    policyDocument?: AWSPolicyDocument
    policyName?: string
 }
+
+export interface RoleTestConfig {
+   attachedPoliciesCount?: number
+   inlinePoliciesCount?: number
+}

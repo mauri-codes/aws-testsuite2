@@ -3,12 +3,13 @@ import {
    IncorrectUserCountForGroup,
    IncorrectManagedPolicyCountForGroup,
    IncorrectPolicyStatementCount,
-   PolicyStatementNotFound
+   PolicyStatementNotFound,
+   IncorrectManagedPolicesCount
 } from "../errors/IAM"
 import { TestResult, Test, SuccessFulTest } from "../index"
-import { CatchTestError, TestError } from "../util/errors"
-import { IAMUser, IAMGroup, IAMPolicy } from "../resources/IAM"
-import { AWSPolicyDocument, PolicyStatement, PolicyTestConfig } from "../types/IAM.types"
+import { CatchTestError, ErrorDescriptor, TestError } from "../util/errors"
+import { IAMUser, IAMGroup, IAMPolicy, IAMRole } from "../resources/IAM"
+import { AWSPolicyDocument, PolicyStatement, PolicyTestConfig, RoleTestConfig } from "../types/IAM.types"
 
 interface GroupTestConfig {
    userCount?: number
@@ -77,9 +78,7 @@ class PolicyHasConfig implements Test{
    policyConfig: PolicyTestConfig
    policy: IAMPolicy
    constructor(id:string, policy: IAMPolicy, policyConfig: PolicyTestConfig) {
-      if (id) {
-         this.id = id
-      }
+      this.id = id
       this.policy = policy
       this.policyConfig = policyConfig
    }
@@ -140,4 +139,32 @@ class PolicyHasConfig implements Test{
    }
 }
 
-export { GroupHasConfig, PolicyHasConfig }
+class RoleHasConfig implements Test{
+   id: string = RoleHasConfig.name
+   roleConfig: RoleTestConfig
+   role: IAMRole
+   error: ErrorDescriptor | undefined
+   constructor(id:string, role: IAMRole, roleConfig: RoleTestConfig, error?: ErrorDescriptor) {
+      this.error = error
+      this.id = id
+      this.role = role
+      this.roleConfig = roleConfig
+   }
+
+   @CatchTestError(RoleHasConfig.name)
+   async run() {
+      await this.hasRoleConfig()
+      return SuccessFulTest(this.id)
+   }
+   async hasRoleConfig() {
+      let attachedPolicies = await this.role.getAttachedRolePolicies()
+      let countFound = attachedPolicies?.length
+      let countReq = this.roleConfig.attachedPoliciesCount
+      if( countReq != null && countFound !== countReq) {
+         throw new TestError(IncorrectManagedPolicesCount({role: this.role.roleName, count: countReq, countFound}))
+      }
+   }
+
+}
+
+export { GroupHasConfig, PolicyHasConfig, RoleHasConfig }

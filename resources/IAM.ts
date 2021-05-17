@@ -52,7 +52,7 @@ class IAMRole extends IAMResource {
       this.roleArn = roleInput.roleArn
       this.roleName = roleInput.roleName
    }
-   async getAttachedRolePolicies() {
+   async getAttachedRolePolicies(): Promise<IAM.attachedPoliciesListType | null> {
       if (this.managedPolicies == undefined) {         
          let attachedPolicies = (await this.iamClient.listAttachedRolePolicies({RoleName: this.getRoleName()}).promise()).AttachedPolicies
          if (attachedPolicies == null || attachedPolicies.length === 0) {
@@ -170,10 +170,10 @@ class IAMPolicy extends IAMResource {
       return this.policyVersions || ""
    }
    async getPolicyDocument(version?: string) {
-      if (version === undefined) {
-         version = (await this.getCurrentPolicyVersion())?.VersionId || ""
-      }
       if (this.policyDocument == null) {
+         if (version === undefined) {
+            version = (await this.getCurrentPolicyVersion())?.VersionId || ""
+         }
          let policy = await this.getPolicyArn()
          let versionInfo = await this.iamClient.getPolicyVersion({
             PolicyArn: policy,
@@ -182,6 +182,16 @@ class IAMPolicy extends IAMResource {
          this.policyDocument = JSON.parse(decodeURIComponent(versionInfo.PolicyVersion?.Document || ""))
       }
       return this.policyDocument
+   }
+   async getPolicyStatementFromAction(action: string) {
+      let policyStatement = await this.getPolicyDocument()
+      return policyStatement?.Statement.find(statement => {
+         if (typeof statement.Action === 'string') {
+            return statement.Action === action
+         } else {
+            return statement.Action.some(act => act === action)
+         }
+      })
    }
 }
 

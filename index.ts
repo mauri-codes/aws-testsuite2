@@ -151,6 +151,10 @@ const SuccessFulTest: (id: string) => TestResult =
 )
 
 class Test {
+   id: string
+   constructor(id: string) {
+      this.id = id
+   }
    async run():Promise<TestResult> {
       return {
          success: true
@@ -168,6 +172,9 @@ class TestGroup {
    async run() {
       const testPromises = this.tests.map(test => test.run())
       let result = await Promise.all(testPromises)
+      this.tests.forEach((test, index) => {
+         result[index].id = test.id
+      })
       return {
          id: this.id,
          success: result.every(test => test.success),

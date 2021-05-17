@@ -150,9 +150,10 @@ interface LambdaTriggerConfig {
 class LambdaTriggerConfiguration extends S3Test implements Test {
    s3Bucket: S3Bucket
    triggerConfig: LambdaTriggerConfig
-   id: string = LambdaTriggerConfiguration.name
-   constructor(s3Bucket: S3Bucket, triggerConfig: LambdaTriggerConfig, error?: ErrorDescriptor) {
+   id: string
+   constructor(id: string, s3Bucket: S3Bucket, triggerConfig: LambdaTriggerConfig, error?: ErrorDescriptor) {
       super(s3Bucket, error)
+      this.id = id
       this.s3Bucket = s3Bucket
       this.triggerConfig = triggerConfig
    }

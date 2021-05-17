@@ -31,10 +31,17 @@ let IncorrectPolicyStatementCount: (policy: string, count: number, countFound: n
    message: `Policy document for ${policy} should have ${count} Statements. ${countFound} found.`
 })
 
+let IncorrectManagedPolicesCount: ({role, count, countFound}: {role?: string, count: number, countFound?: number}) => ErrorDescriptor =
+({role, count, countFound}) => ({
+   code: IncorrectManagedPolicesCount.name,
+   message: `Role ${role || ""} should have ${count} Managed Policies attached. ${countFound || "_"} found.`
+})
+
 export {
-   PolicyStatementNotFound,
    PolicyForGroupNotFound,
+   PolicyStatementNotFound,
    IncorrectUserCountForGroup,
+   IncorrectManagedPolicesCount,
    IncorrectPolicyStatementCount,
    IncorrectManagedPolicyCountForGroup
 }

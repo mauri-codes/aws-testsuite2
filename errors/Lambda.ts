@@ -20,7 +20,13 @@ let NoLambdaFunctionFound: () => ErrorDescriptor =
 let NoLambdaTriggerFoundForS3: (props: {lambda?: string}) => ErrorDescriptor =
 ({lambda}) => ({
    code: NoLambdaFunctionFound.name,
-   message: `${lambda} Function does not provide an S3 Bucket as Trigger`
+   message: `${lambda || "lambda"} Function does not provide an S3 Bucket as Trigger`
+})
+
+let NoLambdaRoleFound: (props: {lambda?: string}) => ErrorDescriptor =
+({lambda}) => ({
+   code: NoLambdaFunctionFound.name,
+   message: `Couldn't find a role attached to ${lambda || "lambda"} function`
 })
 
 const ResourceNotFoundException = "ResourceNotFoundException"
@@ -30,6 +36,7 @@ let NullFromResourceNotFound:ResourceError = {
 }
 
 export {
+   NoLambdaRoleFound,
    IncorrectLambdaConfiguration,
    NoLambdaTriggerFoundForS3,
    NoLambdaFunctionFound,
